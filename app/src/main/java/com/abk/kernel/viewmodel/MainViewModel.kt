@@ -23,6 +23,8 @@ import com.abk.kernel.data.model.*
 import com.abk.kernel.data.repository.GitHubRepository
 import com.abk.kernel.data.repository.PreferencesRepository
 import com.abk.kernel.data.repository.Result
+import com.abk.kernel.ui.blur.BlurConfig
+import com.abk.kernel.utils.BackgroundImageStorage
 import com.abk.kernel.utils.BuildMonitorService
 import com.abk.kernel.utils.BuildProgressUtils
 import com.abk.kernel.utils.buildDisplaySnapshot
@@ -32,8 +34,11 @@ import com.abk.kernel.utils.ForkSigningImportError
 import com.abk.kernel.utils.ForkSigningImportException
 import com.abk.kernel.utils.ForkSigningMaterial
 import com.abk.kernel.utils.ForkSigningManager
+import com.abk.kernel.utils.ForkSigningPublicKeyResolver
+import com.abk.kernel.utils.ForkSigningPublicKeyValue
 import com.abk.kernel.utils.DownloadUtils
 import com.abk.kernel.utils.FailureLogExtractor
+import com.abk.kernel.utils.INVALID_FORK_SIGNING_PUBLIC_KEY_MESSAGE
 import com.abk.kernel.utils.NotificationUtils
 import com.abk.kernel.utils.WorkflowStepI18n
 import com.abk.kernel.utils.BUNDLED_SUSFS_VERSION
@@ -105,6 +110,13 @@ data class CustomKernelOptionsImportResult(
     val duplicateCount: Int
 )
 
+data class CustomKernelOptionSummary(
+    val total: Int,
+    val enabled: Int,
+    val disabled: Int,
+    val ignored: Int
+)
+
 data class MainUiState(
     val authStep: AuthStep = AuthStep.INTRO,
     val rootGranted: Boolean = false,
@@ -114,6 +126,7 @@ data class MainUiState(
     val behindBy: Int = 0,
     val showSyncPrompt: Boolean = false,
     val showOobe: Boolean = false,
+    val showPreferencesResetNotice: Boolean = false,
     val oobeCompleted: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null,
@@ -194,6 +207,8 @@ data class MainUiState(
     val customBackgroundUri: String? = null,
     val backgroundImageEnabled: Boolean = false,
     val uiSurfaceAlpha: Float = 1f,
+    val blurEnabled: Boolean = true,
+    val blurBackgroundExpEnabled: Boolean = false,
     val downloadDirectory: String = DownloadDirectoryUtils.defaultDirectoryPath(),
     val downloadMirrorBaseUrl: String = "",
     val prebuiltGkiEnabled: Boolean = true,
@@ -226,6 +241,10 @@ data class MainUiState(
     val managerSettingsLoading: Boolean = false,
     val managerSettingsError: String? = null,
     val managerSettingActionId: String? = null,
+    val kernelTcpCongestionControl: KernelTcpCongestionControlState? = null,
+    val kernelCapabilitiesLoading: Boolean = false,
+    val kernelCapabilitiesError: String? = null,
+    val kernelCapabilityActionId: String? = null,
     val susfsRuntimeStatus: SusfsRuntimeStatus? = null,
     val susfsConfig: SusfsConfig = defaultSusfsConfig(),
     val susfsLoading: Boolean = false,
@@ -256,6 +275,15 @@ data class MainUiState(
 ) {
     val isDownloading: Boolean
         get() = activeDownloadTasks.isNotEmpty() || downloadProgress.isNotEmpty()
+
+    /** Blur preferences snapshot for [BlurScreenScaffold]. */
+    val blurConfig: BlurConfig
+        get() = BlurConfig(
+            blurEnabled = blurEnabled,
+            backgroundExpEnabled = blurBackgroundExpEnabled,
+            backgroundUri = customBackgroundUri,
+            backgroundImageEnabled = backgroundImageEnabled,
+        )
 }
 
 class MainViewModel @JvmOverloads constructor(
@@ -267,6 +295,10 @@ class MainViewModel @JvmOverloads constructor(
 
     private val prefs = PreferencesRepository(application)
     val github: GitHubRepository = github
+    private val forkSigningPublicKeyResolver = ForkSigningPublicKeyResolver(
+        assetName = FORK_ARTIFACT_SIGNING_PUBLIC_KEY_ASSET_NAME,
+        downloadReleaseAssetText = this.github::downloadReleaseAssetText
+    )
     private val gson = Gson()
     private val ksuModuleListType = object : TypeToken<List<Map<String, Any?>>>() {}.type
     private var hasSavedBuildConfig = false
@@ -302,6 +334,10 @@ class MainViewModel @JvmOverloads constructor(
 
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
+
+    private val _uiSurfaceAlphaPreview = MutableStateFlow(1f)
+    val uiSurfaceAlphaPreview: StateFlow<Float> = _uiSurfaceAlphaPreview.asStateFlow()
+    private var uiSurfaceAlphaPreviewDirty = false
 
     private fun text(@StringRes resId: Int, vararg args: Any): String =
         LocaleHelper.str(resId, *args)
@@ -462,9 +498,30 @@ class MainViewModel @JvmOverloads constructor(
             str = { resId, args -> text(resId, *args) },
         )
         observePreferences()
+        migrateBackgroundUriToInternalStorage()
         observeForegroundWorkflowRefresh()
         if (registerStatusBroadcast) {
             registerStatusReceiver()
+        }
+    }
+
+    /**
+     * One-time migration: older installs persisted the picker's `content://` URI. Copy it
+     * into app-private storage so cold starts decode a local file instead of a cold content
+     * provider (slow wallpaper / black flash after the app is killed and reopened). Runs
+     * only while the stored URI is not already a local file.
+     */
+    private fun migrateBackgroundUriToInternalStorage() {
+        viewModelScope.launch {
+            val uriString = prefs.customBackgroundUri.first() ?: return@launch
+            if (!BackgroundImageStorage.needsCopy(uriString)) return@launch
+            val fileUri = withContext(Dispatchers.IO) {
+                BackgroundImageStorage.copyToInternalStorage(getApplication(), Uri.parse(uriString))
+            } ?: return@launch
+            // Only swap if the user has not picked a different background meanwhile.
+            if (prefs.customBackgroundUri.first() == uriString) {
+                prefs.setBackgroundImageUri(fileUri.toString())
+            }
         }
     }
 
@@ -536,6 +593,11 @@ class MainViewModel @JvmOverloads constructor(
             }
         }
         viewModelScope.launch {
+            prefs.preferencesResetNoticePending.collect { pending ->
+                _uiState.update { state -> state.copy(showPreferencesResetNotice = pending) }
+            }
+        }
+        viewModelScope.launch {
             combine(
                 prefs.themeMode,
                 prefs.dynamicColorEnabled,
@@ -572,13 +634,39 @@ class MainViewModel @JvmOverloads constructor(
             ) { uri, enabled, alpha ->
                 BackgroundPreferences(uri, enabled, alpha)
             }.collect { backgroundPrefs ->
-                _uiState.update {
-                    it.copy(
-                        customBackgroundUri = backgroundPrefs.uri,
-                        backgroundImageEnabled = backgroundPrefs.enabled,
-                        uiSurfaceAlpha = backgroundPrefs.alpha
-                    )
+                if (!uiSurfaceAlphaPreviewDirty) {
+                    // No drag in progress: keep the preview and the persisted value in
+                    // sync (this also restores the preview after an interrupted drag via
+                    // syncUiSurfaceAlphaPreview()).
+                    _uiSurfaceAlphaPreview.value = backgroundPrefs.alpha
+                    _uiState.update {
+                        it.copy(
+                            customBackgroundUri = backgroundPrefs.uri,
+                            backgroundImageEnabled = backgroundPrefs.enabled,
+                            uiSurfaceAlpha = backgroundPrefs.alpha,
+                        )
+                    }
+                } else {
+                    // Drag in progress: a late DataStore emission from an earlier commit
+                    // must not yank the slider thumb back or override the live preview,
+                    // but background URI/enabled still need to keep up.
+                    _uiState.update {
+                        it.copy(
+                            customBackgroundUri = backgroundPrefs.uri,
+                            backgroundImageEnabled = backgroundPrefs.enabled,
+                        )
+                    }
                 }
+            }
+        }
+        viewModelScope.launch {
+            prefs.blurEnabled.collect { enabled ->
+                _uiState.update { it.copy(blurEnabled = enabled) }
+            }
+        }
+        viewModelScope.launch {
+            prefs.blurBackgroundExpEnabled.collect { enabled ->
+                _uiState.update { it.copy(blurBackgroundExpEnabled = enabled) }
             }
         }
         viewModelScope.launch {
@@ -856,6 +944,8 @@ class MainViewModel @JvmOverloads constructor(
 
     fun openBuildOobe() = authOobe.openBuildOobe()
 
+    fun openLoginOobe() = authOobe.openLoginOobe()
+
     fun continueOobeToLogin() = authOobe.continueOobeToLogin()
 
     fun skipOobe() = authOobe.skipOobe()
@@ -913,6 +1003,8 @@ class MainViewModel @JvmOverloads constructor(
                     customBackgroundUri = it.customBackgroundUri,
                     backgroundImageEnabled = it.backgroundImageEnabled,
                     uiSurfaceAlpha = it.uiSurfaceAlpha,
+                    blurEnabled = it.blurEnabled,
+                    blurBackgroundExpEnabled = it.blurBackgroundExpEnabled,
                     downloadDirectory = it.downloadDirectory,
                     downloadMirrorBaseUrl = it.downloadMirrorBaseUrl,
                     prebuiltGkiEnabled = it.prebuiltGkiEnabled,
@@ -1224,10 +1316,10 @@ class MainViewModel @JvmOverloads constructor(
         fork: GitHubRepo,
         release: GitHubRelease,
     ): String? {
-        ForkSigningManager.publicKeyPemFromStoredValue(prefs.forkArtifactSigningPublicKey.first())
-            ?.let { return it }
-        return when (val downloaded = github.downloadReleaseAssetText(owner, fork.name, release.id, FORK_ARTIFACT_SIGNING_PUBLIC_KEY_ASSET_NAME)) {
-            is Result.Success -> downloaded.data.trim().takeIf { it.isNotBlank() }
+        forkSigningPublicKeyResolver.parse(prefs.forkArtifactSigningPublicKey.first())
+            ?.let { return it.pem }
+        return when (val resolved = forkSigningPublicKeyResolver.download(owner, fork.name, release.id)) {
+            is Result.Success -> resolved.data.pem
             else -> null
         }
     }
@@ -1397,22 +1489,13 @@ class MainViewModel @JvmOverloads constructor(
             )
             Result.Loading -> return@withLock Result.Loading
         }
-        suspend fun readRemotePublicKey(): String? =
-            when (val result = github.downloadReleaseAssetText(
-                owner,
-                fork.name,
-                release.id,
-                FORK_ARTIFACT_SIGNING_PUBLIC_KEY_ASSET_NAME,
-            )) {
-                is Result.Success -> ForkSigningManager.publicKeyBase64FromStoredValue(
-                    result.data
-                )
-                else -> null
-            }
-        val firstPublicKeyBase64 = readRemotePublicKey()
-            ?: return@withLock Result.Error(
-                "Fork signing public key is unavailable or invalid"
-            )
+        suspend fun readRemotePublicKey(): Result<ForkSigningPublicKeyValue> =
+            forkSigningPublicKeyResolver.download(owner, fork.name, release.id)
+        val firstPublicKey = when (val result = readRemotePublicKey()) {
+            is Result.Success -> result.data
+            is Result.Error -> return@withLock Result.Error(result.message, result.code)
+            Result.Loading -> return@withLock Result.Loading
+        }
         val secretExists = when (val result = github.listRepositorySecrets(owner, fork.name)) {
             is Result.Success -> result.data.any { it.name == secretName }
             is Result.Error -> return@withLock Result.Error(
@@ -1423,17 +1506,18 @@ class MainViewModel @JvmOverloads constructor(
         if (!secretExists) {
             return@withLock Result.Error("Fork signing Secret is missing")
         }
-        val secondPublicKeyBase64 = readRemotePublicKey()
-            ?: return@withLock Result.Error(
-                "Fork signing public key is unavailable or invalid"
-            )
-        if (firstPublicKeyBase64 != secondPublicKeyBase64) {
+        val secondPublicKey = when (val result = readRemotePublicKey()) {
+            is Result.Success -> result.data
+            is Result.Error -> return@withLock Result.Error(result.message, result.code)
+            Result.Loading -> return@withLock Result.Loading
+        }
+        if (firstPublicKey.base64 != secondPublicKey.base64) {
             return@withLock Result.Error(
                 "Fork signing public key changed during refresh"
             )
         }
-        prefs.saveForkArtifactSigningState(firstPublicKeyBase64, secretName, releaseTag)
-        Result.Success(ForkSigningManager.publicKeyPemFromBase64(firstPublicKeyBase64))
+        prefs.saveForkArtifactSigningState(firstPublicKey.base64, secretName, releaseTag)
+        Result.Success(firstPublicKey.pem)
     }
 
     private suspend fun ensureForkArtifactSigningReady(owner: String, fork: GitHubRepo) {
@@ -1491,23 +1575,22 @@ class MainViewModel @JvmOverloads constructor(
             }
             val existingPublicKeyAsset = releaseAssets.firstOrNull { it.name == FORK_ARTIFACT_SIGNING_PUBLIC_KEY_ASSET_NAME }
             if (secretExists && existingPublicKeyAsset != null) {
-                when (val downloaded = github.downloadReleaseAssetText(owner, fork.name, release.id, FORK_ARTIFACT_SIGNING_PUBLIC_KEY_ASSET_NAME)) {
+                when (val resolved = forkSigningPublicKeyResolver.download(owner, fork.name, release.id)) {
                     is Result.Success -> {
-                        val base64 = ForkSigningManager.publicKeyBase64FromStoredValue(
-                            downloaded.data
+                        prefs.saveForkArtifactSigningState(
+                            resolved.data.base64,
+                            secretName,
+                            releaseTag
                         )
-                        if (base64 == null) {
-                            showSnackbar("Fork signing public key is invalid", longDuration = true)
-                            return
-                        }
-                        prefs.saveForkArtifactSigningState(base64, secretName, releaseTag)
                         return
                     }
                     is Result.Error -> {
-                        showSnackbar(
-                            "Fork signing public key refresh failed: ${downloaded.message}",
-                            longDuration = true
-                        )
+                        val message = if (resolved.message == INVALID_FORK_SIGNING_PUBLIC_KEY_MESSAGE) {
+                            "Fork signing public key is invalid"
+                        } else {
+                            "Fork signing public key refresh failed: ${resolved.message}"
+                        }
+                        showSnackbar(message, longDuration = true)
                         return
                     }
                     Result.Loading -> return
@@ -1984,6 +2067,10 @@ class MainViewModel @JvmOverloads constructor(
             override fun onStop(owner: LifecycleOwner) {
                 appInForeground = false
                 stopForegroundWorkflowRefresh()
+                // Backgrounding (Home / recents) mid-drag never fires the slider's
+                // onValueChangeFinished, so drop the un-persisted preview and restore the
+                // persisted alpha instead of leaving the whole app on a stale value.
+                syncUiSurfaceAlphaPreview()
             }
         })
         viewModelScope.launch {
@@ -3236,9 +3323,63 @@ class MainViewModel @JvmOverloads constructor(
     fun setCustomThemeColors(themeColorArgb: Int, accentColorArgb: Int) = viewModelScope.launch {
         prefs.setCustomThemeColors(themeColorArgb, accentColorArgb)
     }
-    fun setBackgroundImageUri(uri: String?) = viewModelScope.launch { prefs.setBackgroundImageUri(uri) }
+    /**
+     * Persists the picked background. `content://` picker URIs are first copied into
+     * app-private storage ([BackgroundImageStorage]) so cold starts decode a local file
+     * instead of a (possibly cold) content provider — otherwise the wallpaper can arrive
+     * late / the screen stays black after the app is killed and reopened. Runs in the
+     * view model scope so an early navigation away from the settings screen cannot cancel
+     * the copy. Falls back to the original URI when the copy fails.
+     */
+    fun setBackgroundImageUri(uri: String?) = viewModelScope.launch {
+        val storedUri = if (uri != null && BackgroundImageStorage.needsCopy(uri)) {
+            withContext(Dispatchers.IO) {
+                BackgroundImageStorage.copyToInternalStorage(getApplication(), Uri.parse(uri))
+            }?.toString() ?: uri
+        } else {
+            uri
+        }
+        prefs.setBackgroundImageUri(storedUri)
+    }
     fun setBackgroundImageEnabled(v: Boolean) = viewModelScope.launch { prefs.setBackgroundImageEnabled(v) }
-    fun setUiSurfaceAlpha(alpha: Float) = viewModelScope.launch { prefs.setUiSurfaceAlpha(alpha) }
+    fun setUiSurfaceAlpha(alpha: Float) {
+        val normalized = alpha.coerceIn(0f, 1f)
+        uiSurfaceAlphaPreviewDirty = false
+        _uiSurfaceAlphaPreview.value = normalized
+        viewModelScope.launch { prefs.setUiSurfaceAlpha(normalized) }
+    }
+
+    /**
+     * In-memory preview while the slider is being dragged. Persisted on drag end via
+     * [setUiSurfaceAlpha]; no DataStore write happens per drag tick.
+     */
+    fun setUiSurfaceAlphaPreview(alpha: Float) {
+        uiSurfaceAlphaPreviewDirty = true
+        _uiSurfaceAlphaPreview.value = alpha.coerceIn(0f, 1f)
+    }
+
+    /**
+     * Resets the drag-preview state so the in-memory alpha re-syncs from the persisted
+     * value. Called when the settings page is disposed or the app is backgrounded: an
+     * interrupted drag never fires Slider.onValueChangeFinished, which would otherwise
+     * leave the preview stuck on an un-persisted value for the rest of the session.
+     */
+    fun syncUiSurfaceAlphaPreview() {
+        uiSurfaceAlphaPreviewDirty = false
+        viewModelScope.launch {
+            val persisted = prefs.uiSurfaceAlpha.first()
+            // Re-check: a new drag may have started while the read was in flight.
+            if (!uiSurfaceAlphaPreviewDirty) {
+                _uiSurfaceAlphaPreview.value = persisted
+            }
+        }
+    }
+    fun setBlurEnabled(v: Boolean) = viewModelScope.launch {
+        prefs.setBlurEnabled(v)
+    }
+    fun setBlurBackgroundExpEnabled(v: Boolean) = viewModelScope.launch {
+        prefs.setBlurBackgroundExpEnabled(v)
+    }
     fun acceptTerms() = viewModelScope.launch { prefs.acceptCurrentTerms() }
     suspend fun loadFlashFilterJson(): String? = prefs.flashFilterJson.first()
     fun saveFlashFilterJson(json: String) = viewModelScope.launch { prefs.saveFlashFilterJson(json) }
@@ -3630,6 +3771,77 @@ class MainViewModel @JvmOverloads constructor(
         }
     }
 
+    fun refreshKernelCapabilities(force: Boolean = false) {
+        if (!force && _uiState.value.kernelCapabilitiesLoading) return
+        viewModelScope.launch {
+            val rootGranted = _uiState.value.rootGranted
+            _uiState.update { it.copy(kernelCapabilitiesLoading = true, kernelCapabilitiesError = null) }
+            val access = withContext(Dispatchers.IO) { resolveManagerAccess(rootGranted) }
+            if (access.kind == RootUtils.ManagerAccessKind.NO_ROOT) {
+                val message = managerAccessErrorMessage(access, rootGranted)
+                _uiState.update {
+                    it.copy(
+                        managerAccessState = access.toUiState(),
+                        managerAccessError = message,
+                        hasNativeManagerPermission = false,
+                        kernelTcpCongestionControl = null,
+                        kernelCapabilitiesLoading = false,
+                        kernelCapabilitiesError = message,
+                        kernelCapabilityActionId = null
+                    )
+                }
+                return@launch
+            }
+            val tcp = withContext(Dispatchers.IO) { RootUtils.readTcpCongestionControl() }
+            _uiState.update {
+                it.copy(
+                    managerAccessState = access.toUiState(),
+                    managerAccessError = null,
+                    hasNativeManagerPermission = access.hasNativeManagerPermission,
+                    kernelTcpCongestionControl = tcp,
+                    kernelCapabilitiesLoading = false,
+                    kernelCapabilitiesError = if (tcp?.available == true) {
+                        null
+                    } else {
+                        text(R.string.settings_kernel_capabilities_unavailable)
+                    },
+                    kernelCapabilityActionId = null
+                )
+            }
+        }
+    }
+
+    fun setTcpCongestionControlAlgorithm(algorithm: String) {
+        val clean = algorithm.trim()
+        if (clean.isBlank() || _uiState.value.kernelCapabilityActionId != null) return
+        viewModelScope.launch {
+            val actionId = "$KERNEL_CAPABILITY_TCP_CONGESTION:$clean"
+            _uiState.update {
+                it.copy(kernelCapabilityActionId = actionId, kernelCapabilitiesError = null)
+            }
+            val rootGranted = _uiState.value.rootGranted
+            val result = withContext(Dispatchers.IO) {
+                val access = resolveManagerAccess(rootGranted)
+                if (access.kind == RootUtils.ManagerAccessKind.NO_ROOT) {
+                    RootUtils.ShellResult(false, listOf(managerAccessErrorMessage(access, rootGranted)))
+                } else {
+                    RootUtils.setTcpCongestionControl(clean)
+                }
+            }
+            if (result.success) {
+                refreshKernelCapabilities(force = true)
+            } else {
+                _uiState.update {
+                    it.copy(
+                        kernelCapabilityActionId = null,
+                        kernelCapabilitiesError = result.output.lastOrNull()?.takeIf { line -> line.isNotBlank() }
+                            ?: text(R.string.settings_tcp_congestion_change_failed)
+                    )
+                }
+            }
+        }
+    }
+
     fun refreshManagerTools(force: Boolean = false) {
         if (!force && _uiState.value.managerToolsLoading) return
         viewModelScope.launch {
@@ -3931,6 +4143,11 @@ class MainViewModel @JvmOverloads constructor(
         rootGranted: Boolean
     ): ManagerSettingsLoad =
         runCatching {
+            val kernelCapabilitiesItem = if (rootGranted || access.hasNativeManagerPermission) {
+                buildKernelCapabilitiesManagerSetting()
+            } else {
+                null
+            }
             val susfsItem = if (rootGranted) {
                 buildSusfsManagerSetting(RootUtils.readSusfsRuntimeStatus())
             } else {
@@ -3938,13 +4155,15 @@ class MainViewModel @JvmOverloads constructor(
             }
 
             if (!access.hasNativeManagerPermission || !RootUtils.isNativeManagerActive()) {
-                if (susfsItem == null) {
+                val items = listOfNotNull(kernelCapabilitiesItem, susfsItem)
+                if (items.isEmpty()) {
                     ManagerSettingsLoad()
                 } else {
+                    val manager = access.runtime?.normalizedForManagerSettings()
                     ManagerSettingsLoad(
-                        backend = "susfs",
-                        title = text(R.string.settings_manager_settings),
-                        items = listOf(susfsItem)
+                        backend = manager?.backend?.takeIf { it.isNotBlank() } ?: "kernel",
+                        title = manager?.let { managerSettingsTitle(it) } ?: text(R.string.settings_kernel_capabilities),
+                        items = items
                     )
                 }
             } else {
@@ -3976,17 +4195,45 @@ class MainViewModel @JvmOverloads constructor(
                     )
                 }
                 }
-                if (susfsItem == null) {
-                    base
-                } else {
-                    base.copy(items = base.items + susfsItem)
-                }
+                base.copy(
+                    items = mergeManagerNavigationItems(
+                        baseItems = base.items,
+                        kernelCapabilitiesItem = kernelCapabilitiesItem,
+                        susfsItem = susfsItem
+                    )
+                )
             }
         }.getOrElse { error ->
             ManagerSettingsLoad(
                 error = error.message?.takeIf { it.isNotBlank() } ?: text(R.string.settings_manager_load_failed)
             )
         }
+
+    private fun buildKernelCapabilitiesManagerSetting(): ManagerSettingItem? {
+        val tcp = RootUtils.readTcpCongestionControl()
+            ?.takeIf { RootUtils.hasManageableTcpCongestionControl(it) }
+            ?: return null
+        val current = tcp.currentAlgorithm.ifBlank { text(R.string.settings_unknown) }
+        return ManagerSettingItem(
+            id = MANAGER_SETTING_KERNEL_CAPABILITIES,
+            title = text(R.string.settings_kernel_capabilities),
+            subtitle = text(R.string.settings_kernel_capabilities_summary, current, tcp.availableAlgorithms.size),
+            kind = ManagerSettingKind.NAVIGATION
+        )
+    }
+
+    private fun mergeManagerNavigationItems(
+        baseItems: List<ManagerSettingItem>,
+        kernelCapabilitiesItem: ManagerSettingItem?,
+        susfsItem: ManagerSettingItem?
+    ): List<ManagerSettingItem> {
+        val extraItems = listOfNotNull(kernelCapabilitiesItem, susfsItem)
+        if (extraItems.isEmpty()) return baseItems
+        val insertIndex = baseItems.indexOfFirst { it.kind != ManagerSettingKind.NAVIGATION }
+            .takeIf { it >= 0 }
+            ?: baseItems.size
+        return baseItems.take(insertIndex) + extraItems + baseItems.drop(insertIndex)
+    }
 
     private fun buildSusfsManagerSetting(status: SusfsRuntimeStatus): ManagerSettingItem? {
         if (!status.available) return null
@@ -4486,13 +4733,9 @@ class MainViewModel @JvmOverloads constructor(
             if (editingIndex != null && editingIndex in indices) {
                 removeAt(editingIndex)
             }
-            val duplicateIndex = indexOfFirst { it.symbol.equals(symbol, ignoreCase = true) }
-            if (duplicateIndex >= 0) {
-                removeAt(duplicateIndex)
-            }
-            add(normalizedOption)
         }
-        updateBuildConfig(currentConfig.copy(customKernelOptions = updated))
+        val merged = mergeCustomKernelOptions(updated, listOf(normalizedOption))
+        updateBuildConfig(currentConfig.copy(customKernelOptions = merged))
     }
 
     fun removeCustomKernelOption(index: Int) {
@@ -4502,10 +4745,24 @@ class MainViewModel @JvmOverloads constructor(
         updateBuildConfig(currentConfig.copy(customKernelOptions = updated))
     }
 
+    fun removeCustomKernelOptions(indices: Collection<Int>) {
+        val currentConfig = KernelSupport.normalize(_uiState.value.buildConfig)
+        if (currentConfig.buildTarget == BUILD_TARGET_ONEPLUS) return
+        val updated = removeCustomKernelOptionsAtIndices(currentConfig.customKernelOptions, indices)
+        if (updated == currentConfig.customKernelOptions) return
+        updateBuildConfig(currentConfig.copy(customKernelOptions = updated))
+    }
+
+    fun clearCustomKernelOptions() {
+        val currentConfig = KernelSupport.normalize(_uiState.value.buildConfig)
+        if (currentConfig.buildTarget == BUILD_TARGET_ONEPLUS || currentConfig.customKernelOptions.isEmpty()) return
+        updateBuildConfig(currentConfig.copy(customKernelOptions = emptyList()))
+    }
+
     fun importCustomKernelOptions(text: String): CustomKernelOptionsImportResult {
         val currentConfig = KernelSupport.normalize(_uiState.value.buildConfig)
         val imported = parseCustomKernelOptionsText(text)
-        val merged = currentConfig.customKernelOptions + imported.options
+        val merged = mergeCustomKernelOptions(currentConfig.customKernelOptions, imported.options)
         updateBuildConfig(currentConfig.copy(customKernelOptions = merged))
         return imported
     }
@@ -5234,6 +5491,13 @@ class MainViewModel @JvmOverloads constructor(
         it.copy(snackbarMessage = null, snackbarLongDuration = false)
     }
 
+    fun dismissPreferencesResetNotice() {
+        _uiState.update { it.copy(showPreferencesResetNotice = false) }
+        viewModelScope.launch {
+            prefs.clearPreferencesResetNotice()
+        }
+    }
+
     fun clearCustomExternalModuleError() = _uiState.update { it.copy(customExternalModuleError = null) }
 
     private fun buildPlanCodecMessages(): BuildPlanCodecMessages = BuildPlanCodecMessages(
@@ -5764,6 +6028,47 @@ internal fun parseCustomKernelOptionsText(text: String): CustomKernelOptionsImpo
     )
 }
 
+internal fun summarizeCustomKernelOptions(options: List<CustomKernelOption>): CustomKernelOptionSummary {
+    var enabled = 0
+    var disabled = 0
+    var ignored = 0
+    options.forEach { option ->
+        when (CustomKernelOptionMode.normalize(option.mode)) {
+            CustomKernelOptionMode.ENABLED_Y,
+            CustomKernelOptionMode.ENABLED_M,
+            CustomKernelOptionMode.RAW -> enabled += 1
+            CustomKernelOptionMode.DISABLED -> disabled += 1
+            else -> ignored += 1
+        }
+    }
+    return CustomKernelOptionSummary(
+        total = options.size,
+        enabled = enabled,
+        disabled = disabled,
+        ignored = ignored
+    )
+}
+
+internal fun mergeCustomKernelOptions(
+    options: List<CustomKernelOption>,
+    updates: List<CustomKernelOption>
+): List<CustomKernelOption> {
+    if (updates.isEmpty()) return options
+    return KernelSupport.normalizeCustomKernelOptions(options + updates)
+}
+
+internal fun removeCustomKernelOptionsAtIndices(
+    options: List<CustomKernelOption>,
+    indices: Collection<Int>
+): List<CustomKernelOption> {
+    if (options.isEmpty() || indices.isEmpty()) return options
+    val targetIndices = indices.filter { it in options.indices }.toSet()
+    if (targetIndices.isEmpty()) return options
+    return options.filterIndexed { index, _ ->
+        index !in targetIndices
+    }
+}
+
 internal fun CustomKernelOption.toWorkflowLine(): String? {
     val symbol = KernelSupport.normalizeCustomKernelSymbol(symbol)
     if (symbol.isBlank()) return null
@@ -6188,6 +6493,8 @@ private const val MANAGER_SETTING_SELINUX_HIDE = "selinux_hide"
 private const val MANAGER_SETTING_DEFAULT_UMOUNT = "default_umount_modules"
 private const val MANAGER_SETTING_WEBVIEW_DEBUG = "webview_debug"
 private const val MANAGER_SETTING_SUSFS = "susfs_control"
+private const val MANAGER_SETTING_KERNEL_CAPABILITIES = "kernel_capabilities"
+private const val KERNEL_CAPABILITY_TCP_CONGESTION = "tcp_congestion"
 private const val MANAGER_TOOL_SELINUX_MODE = "selinux_mode"
 private const val MANAGER_TOOL_BACKUP_ALLOWLIST = "backup_allowlist"
 private const val MANAGER_TOOL_RESTORE_ALLOWLIST = "restore_allowlist"
