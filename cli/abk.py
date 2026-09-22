@@ -115,7 +115,7 @@ WORKFLOWS = {
     "a15": {"file": "kernel-a15-6-6.yml", "name": t("build_target_a15"), "android": "android15", "kernel": "6.6"},
     "a16": {"file": "kernel-a16-6-12.yml", "name": t("build_target_a16"), "android": "android16", "kernel": "6.12"},
     "custom": {"file": "kernel-custom.yml", "name": t("build_target_custom")},
-    "oneplus": {"file": "oneplus-custom.yml", "name": t("build_target_oneplus")},
+    "pixel10": {"file": "pixel10-custom.yml", "name": t("build_target_pixel10")},
 }
 
 ANDROID_VERSIONS = ["android12", "android13", "android14", "android15", "android16"]
@@ -146,7 +146,7 @@ WORKFLOW_RUNTIME_NAMES = {
     "kernel-a15-6-6.yml": "内核构建 - Android 15 (6.6)",
     "kernel-a16-6-12.yml": "内核构建 - Android 16 (6.12)",
     "kernel-custom.yml": "Android 内核构建-自定义",
-    "oneplus-custom.yml": "OnePlus 内核构建-自定义",
+    "pixel10-custom.yml": "Pixel 10 内核构建-自定义",
     "kernel-full-feature-matrix.yml": "全属性内核构建矩阵",
     "all-managers-full-feature-matrix.yml": "全管理器全矩阵编译",
 }
@@ -176,12 +176,12 @@ def resolve_plan_ksu_branch(variant, branch):
     return resolve_ksu_branch(branch)
 
 
-def supports_kpm(variant, ksu_branch=None, *, oneplus=False):
+def supports_kpm(variant, ksu_branch=None, *, pixel10=False):
     """Return whether the selected KernelSU source exposes KPM.
 
     Keep this aligned with Android's KernelSupport.isKpmSupported contract.
     """
-    if oneplus:
+    if pixel10:
         return variant in {"SukiSU", "ReSukiSU"}
     if variant == "SukiSU":
         return True
@@ -217,40 +217,40 @@ def selected_manager_variants(value):
 VIRT_OPTIONS = ["off", "on", "678", "123", "345"]
 
 ONEPLUS_DEVICES = {
-    "oneplus_15": {"name": "OnePlus 15", "cpu": "sm8850", "android": "android16", "kernel": "6.12"},
-    "oneplus_15t": {"name": "OnePlus 15T", "cpu": "sm8850", "android": "android16", "kernel": "6.12"},
-    "oneplus_13_b": {"name": "OnePlus 13", "cpu": "sm8750", "android": "android15", "kernel": "6.6"},
-    "oneplus_13s_b": {"name": "OnePlus 13s", "cpu": "sm8750", "android": "android15", "kernel": "6.6"},
-    "oneplus_13t_b": {"name": "OnePlus 13T", "cpu": "sm8750", "android": "android15", "kernel": "6.6"},
-    "oneplus_ace5_pro_b": {"name": "OnePlus Ace5 Pro", "cpu": "sm8750", "android": "android15", "kernel": "6.6"},
-    "oneplus_ace_6": {"name": "OnePlus Ace 6", "cpu": "sm8750", "android": "android15", "kernel": "6.6"},
-    "oneplus_pad_2_pro_b": {"name": "OnePlus Pad 2 Pro", "cpu": "sm8750", "android": "android15", "kernel": "6.6"},
-    "oneplus_pad_3_b": {"name": "OnePlus Pad 3", "cpu": "sm8750", "android": "android15", "kernel": "6.6"},
-    "oneplus_ace5_ultra_b": {"name": "OnePlus Ace5 Ultra", "cpu": "mt6991", "android": "android15", "kernel": "6.6"},
-    "oneplus_turbo_6": {"name": "OnePlus Turbo 6", "cpu": "sm8735", "android": "android15", "kernel": "6.6"},
-    "oneplus_12_b": {"name": "OnePlus 12", "cpu": "sm8650", "android": "android14", "kernel": "6.1"},
-    "oneplus_ace3_pro_b": {"name": "OnePlus Ace3 Pro", "cpu": "sm8650", "android": "android14", "kernel": "6.1"},
-    "oneplus_ace5_b": {"name": "OnePlus Ace5", "cpu": "sm8650", "android": "android14", "kernel": "6.1"},
-    "oneplus_13r_b": {"name": "OnePlus 13R", "cpu": "sm8650", "android": "android14", "kernel": "6.1"},
-    "oneplus_pad2_b": {"name": "OnePlus Pad 2", "cpu": "sm8650", "android": "android14", "kernel": "6.1"},
-    "oneplus_pad_pro_b": {"name": "OnePlus Pad Pro", "cpu": "sm8650", "android": "android14", "kernel": "6.1"},
-    "oneplus_ace5_race_b": {"name": "OnePlus Ace5 Race", "cpu": "mt6989", "android": "android14", "kernel": "6.1"},
-    "oneplus_nord_5_b": {"name": "OnePlus Nord 5", "cpu": "sm8635", "android": "android14", "kernel": "6.1"},
-    "oneplus_11_b": {"name": "OnePlus 11", "cpu": "sm8550", "android": "android13", "kernel": "5.15"},
-    "oneplus_12r_b": {"name": "OnePlus 12R", "cpu": "sm8550", "android": "android13", "kernel": "5.15"},
-    "oneplus_ace2_pro_b": {"name": "OnePlus Ace2 Pro", "cpu": "sm8550", "android": "android13", "kernel": "5.15"},
-    "oneplus_ace3_b": {"name": "OnePlus Ace3", "cpu": "sm8550", "android": "android13", "kernel": "5.15"},
-    "oneplus_open_b": {"name": "OnePlus Open", "cpu": "sm8550", "android": "android13", "kernel": "5.15"},
-    "oneplus_10t_v": {"name": "OnePlus 10T", "cpu": "sm8475", "android": "android12", "kernel": "5.10"},
-    "oneplus_11r_b": {"name": "OnePlus 11R", "cpu": "sm8475", "android": "android12", "kernel": "5.10"},
-    "oneplus_ace2_b": {"name": "OnePlus Ace2", "cpu": "sm8475", "android": "android12", "kernel": "5.10"},
-    "oneplus_ace_pro_v": {"name": "OnePlus Ace Pro", "cpu": "sm8475", "android": "android12", "kernel": "5.10"},
-    "oneplus_10_pro_b": {"name": "OnePlus 10 Pro", "cpu": "sm8450", "android": "android12", "kernel": "5.10"},
-    "oneplus_ace_3v_b": {"name": "OnePlus Ace 3V", "cpu": "sm7675", "android": "android14", "kernel": "6.1"},
-    "oneplus_turbo_6v": {"name": "OnePlus Turbo 6V", "cpu": "sm7635", "android": "android14", "kernel": "6.1"},
-    "oneplus_nord_4_b": {"name": "OnePlus Nord 4", "cpu": "sm7675", "android": "android14", "kernel": "6.1"},
-    "oneplus_nord_ce4_lite_5g": {"name": "OnePlus Nord CE4 Lite 5G", "cpu": "sm6375", "android": "android14", "kernel": "6.1"},
-    "oneplus_nord_ce4_b": {"name": "OnePlus Nord CE4", "cpu": "sm7550", "android": "android13", "kernel": "5.15"},
+    "pixel10_15": {"name": "Pixel 10 15", "cpu": "sm8850", "android": "android16", "kernel": "6.12"},
+    "pixel10_15t": {"name": "Pixel 10 15T", "cpu": "sm8850", "android": "android16", "kernel": "6.12"},
+    "pixel10_13_b": {"name": "Pixel 10 13", "cpu": "sm8750", "android": "android15", "kernel": "6.6"},
+    "pixel10_13s_b": {"name": "Pixel 10 13s", "cpu": "sm8750", "android": "android15", "kernel": "6.6"},
+    "pixel10_13t_b": {"name": "Pixel 10 13T", "cpu": "sm8750", "android": "android15", "kernel": "6.6"},
+    "pixel10_ace5_pro_b": {"name": "Pixel 10 Ace5 Pro", "cpu": "sm8750", "android": "android15", "kernel": "6.6"},
+    "pixel10_ace_6": {"name": "Pixel 10 Ace 6", "cpu": "sm8750", "android": "android15", "kernel": "6.6"},
+    "pixel10_pad_2_pro_b": {"name": "Pixel 10 Pad 2 Pro", "cpu": "sm8750", "android": "android15", "kernel": "6.6"},
+    "pixel10_pad_3_b": {"name": "Pixel 10 Pad 3", "cpu": "sm8750", "android": "android15", "kernel": "6.6"},
+    "pixel10_ace5_ultra_b": {"name": "Pixel 10 Ace5 Ultra", "cpu": "mt6991", "android": "android15", "kernel": "6.6"},
+    "pixel10_turbo_6": {"name": "Pixel 10 Turbo 6", "cpu": "sm8735", "android": "android15", "kernel": "6.6"},
+    "pixel10_12_b": {"name": "Pixel 10 12", "cpu": "sm8650", "android": "android14", "kernel": "6.1"},
+    "pixel10_ace3_pro_b": {"name": "Pixel 10 Ace3 Pro", "cpu": "sm8650", "android": "android14", "kernel": "6.1"},
+    "pixel10_ace5_b": {"name": "Pixel 10 Ace5", "cpu": "sm8650", "android": "android14", "kernel": "6.1"},
+    "pixel10_13r_b": {"name": "Pixel 10 13R", "cpu": "sm8650", "android": "android14", "kernel": "6.1"},
+    "pixel10_pad2_b": {"name": "Pixel 10 Pad 2", "cpu": "sm8650", "android": "android14", "kernel": "6.1"},
+    "pixel10_pad_pro_b": {"name": "Pixel 10 Pad Pro", "cpu": "sm8650", "android": "android14", "kernel": "6.1"},
+    "pixel10_ace5_race_b": {"name": "Pixel 10 Ace5 Race", "cpu": "mt6989", "android": "android14", "kernel": "6.1"},
+    "pixel10_nord_5_b": {"name": "Pixel 10 Nord 5", "cpu": "sm8635", "android": "android14", "kernel": "6.1"},
+    "pixel10_11_b": {"name": "Pixel 10 11", "cpu": "sm8550", "android": "android13", "kernel": "5.15"},
+    "pixel10_12r_b": {"name": "Pixel 10 12R", "cpu": "sm8550", "android": "android13", "kernel": "5.15"},
+    "pixel10_ace2_pro_b": {"name": "Pixel 10 Ace2 Pro", "cpu": "sm8550", "android": "android13", "kernel": "5.15"},
+    "pixel10_ace3_b": {"name": "Pixel 10 Ace3", "cpu": "sm8550", "android": "android13", "kernel": "5.15"},
+    "pixel10_open_b": {"name": "Pixel 10 Open", "cpu": "sm8550", "android": "android13", "kernel": "5.15"},
+    "pixel10_10t_v": {"name": "Pixel 10 10T", "cpu": "sm8475", "android": "android12", "kernel": "5.10"},
+    "pixel10_11r_b": {"name": "Pixel 10 11R", "cpu": "sm8475", "android": "android12", "kernel": "5.10"},
+    "pixel10_ace2_b": {"name": "Pixel 10 Ace2", "cpu": "sm8475", "android": "android12", "kernel": "5.10"},
+    "pixel10_ace_pro_v": {"name": "Pixel 10 Ace Pro", "cpu": "sm8475", "android": "android12", "kernel": "5.10"},
+    "pixel10_10_pro_b": {"name": "Pixel 10 10 Pro", "cpu": "sm8450", "android": "android12", "kernel": "5.10"},
+    "pixel10_ace_3v_b": {"name": "Pixel 10 Ace 3V", "cpu": "sm7675", "android": "android14", "kernel": "6.1"},
+    "pixel10_turbo_6v": {"name": "Pixel 10 Turbo 6V", "cpu": "sm7635", "android": "android14", "kernel": "6.1"},
+    "pixel10_nord_4_b": {"name": "Pixel 10 Nord 4", "cpu": "sm7675", "android": "android14", "kernel": "6.1"},
+    "pixel10_nord_ce4_lite_5g": {"name": "Pixel 10 Nord CE4 Lite 5G", "cpu": "sm6375", "android": "android14", "kernel": "6.1"},
+    "pixel10_nord_ce4_b": {"name": "Pixel 10 Nord CE4", "cpu": "sm7550", "android": "android13", "kernel": "5.15"},
 }
 
 ONEPLUS_SUSFS_SUPPORTED = {
@@ -304,7 +304,7 @@ def invalid_build_argument(args):
     if ref and not _valid_git_ref(ref):
         return "--ref"
 
-    if not getattr(args, "oneplus", False):
+    if not getattr(args, "pixel10", False):
         custom_ref = getattr(args, "custom_ref", None)
         if custom_ref and not _valid_git_ref(custom_ref, allow_history_suffix=True):
             return "--custom-ref"
@@ -377,7 +377,7 @@ def invalid_build_argument(args):
     return None
 
 
-def validate_oneplus_build(args, device_info=None):
+def validate_pixel10_build(args, device_info=None):
     errors = []
     warnings = []
     
@@ -3823,7 +3823,7 @@ def _set_build_defaults(args):
         "kpm": full_mode,
         "susfs": True,
         "rekernel": full_mode,
-        "oneplus_8e": full_mode,
+        "pixel10_8e": full_mode,
         "ntsync": full_mode,
         "networking": full_mode,
         "zram_full_algo": full_mode,
@@ -3885,7 +3885,7 @@ def _standard_build_inputs(
     if virtualization_support != "off":
         inputs["virtualization_support"] = virtualization_support
     if supports_supp_op:
-        inputs["supp_op"] = str(bool(args.oneplus_8e)).lower()
+        inputs["supp_op"] = str(bool(args.pixel10_8e)).lower()
     if args.version:
         inputs["version"] = args.version
     if args.custom_ref and variant != "None":
@@ -3918,7 +3918,7 @@ def _full_matrix_inputs(args, variant):
         "use_rekernel": str(bool(args.rekernel)).lower(),
         "use_ntsync": str(bool(args.ntsync)).lower(),
         "use_networking": str(bool(args.networking)).lower(),
-        "supp_op": str(bool(args.oneplus_8e)).lower(),
+        "supp_op": str(bool(args.pixel10_8e)).lower(),
         "virtualization_support": args.virt,
         "zram_full_algo": str(bool(args.zram_full_algo)).lower(),
         "zram_extra_algos": args.zram_extra_algos or "",
@@ -3936,10 +3936,10 @@ def _all_managers_inputs(args):
             for variant in manager_variants
         )
     include_kpm_password = bool(args.kpm) and selected_gki_supports_kpm
-    oneplus_kpm_enabled = bool(args.kpm)
-    oneplus_options = {
+    pixel10_kpm_enabled = bool(args.kpm)
+    pixel10_options = {
         "enable_susfs": bool(args.susfs),
-        "use_kpm": oneplus_kpm_enabled,
+        "use_kpm": pixel10_kpm_enabled,
         "use_lz4kd": bool(args.lz4kd),
         "use_bbg": bool(args.bbg),
         "use_bbr": bool(args.bbr),
@@ -3966,12 +3966,12 @@ def _all_managers_inputs(args):
         "use_rekernel": str(bool(args.rekernel)).lower(),
         "use_ntsync": str(bool(args.ntsync)).lower(),
         "use_networking": str(bool(args.networking)).lower(),
-        "supp_op": str(bool(args.oneplus_8e)).lower(),
+        "supp_op": str(bool(args.pixel10_8e)).lower(),
         "virtualization_support": args.virt,
         "zram_full_algo": str(bool(args.zram_full_algo)).lower(),
         "zram_extra_algos": args.zram_extra_algos or "",
         "custom_external_modules": args.custom_modules or "",
-        "oneplus_options_json": json.dumps(oneplus_options, separators=(",", ":")),
+        "pixel10_options_json": json.dumps(pixel10_options, separators=(",", ":")),
     }
 
 
@@ -4003,14 +4003,14 @@ def _build_plan_id(plan, ref):
 
 def cmd_build(args):
     warning_messages = []
-    if args.matrix and args.oneplus:
-        message = "--matrix and --oneplus are mutually exclusive"
+    if args.matrix and args.pixel10:
+        message = "--matrix and --pixel10 are mutually exclusive"
         print(message, file=sys.stderr)
         _set_build_error(args, message, "invalid_arguments")
         return 2
 
     effective_ksu_branch = resolve_ksu_branch(args.ksu_branch)
-    if not args.oneplus:
+    if not args.pixel10:
         if args.matrix in ("full", "all-managers") and (
             args.custom_ref
             or (
@@ -4051,7 +4051,7 @@ def cmd_build(args):
     if args.revision:
         revision_supported = args.matrix in ("full", "all-managers") or (
             not args.matrix
-            and not args.oneplus
+            and not args.pixel10
             and (args.kernel_version or "5.10") == "5.10"
         )
         if not revision_supported:
@@ -4063,7 +4063,7 @@ def cmd_build(args):
             _set_build_error(args, message, "invalid_arguments")
             return 2
 
-    if not args.matrix and not args.oneplus:
+    if not args.matrix and not args.pixel10:
         selected_line = (
             args.android_version or "android12",
             args.kernel_version or "5.10",
@@ -4088,7 +4088,7 @@ def cmd_build(args):
             return 2
 
     device_info = None
-    if args.oneplus:
+    if args.pixel10:
         if not args.device:
             message = t("err_need_device")
             print(message, file=sys.stderr)
@@ -4104,7 +4104,7 @@ def cmd_build(args):
             )
             _set_build_error(args, message, "invalid_arguments")
             return 2
-        errors, warnings = validate_oneplus_build(args, device_info)
+        errors, warnings = validate_pixel10_build(args, device_info)
         for warning in warnings:
             warning_messages.append(warning)
             print(t("warning_prefix") + " " + warning)
@@ -4174,8 +4174,8 @@ def cmd_build(args):
             targets = MATRIX_TARGETS
         elif args.matrix:
             targets = [args.matrix]
-        elif args.oneplus:
-            targets = ["oneplus"]
+        elif args.pixel10:
+            targets = ["pixel10"]
         else:
             targets = ["custom"]
 
@@ -4187,13 +4187,13 @@ def cmd_build(args):
         for target in targets:
             for variant in variants:
                 workflow = WORKFLOWS[target]
-                if target == "oneplus":
+                if target == "pixel10":
                     kpm_enabled = bool(args.kpm) and supports_kpm(
                         variant,
-                        oneplus=True,
+                        pixel10=True,
                     )
                     if args.kpm and not kpm_enabled:
-                        selection = f"{variant} (OnePlus main)"
+                        selection = f"{variant} (Pixel 10 main)"
                         warning = t("op_no_kpm_ksu", ksu=selection)
                         warning_messages.append(warning)
                         print(t("warning_prefix") + " " + warning)
@@ -4233,7 +4233,7 @@ def cmd_build(args):
                     )
                     if target == "custom":
                         inputs.update({
-                            "supp_op": str(bool(args.oneplus_8e)).lower(),
+                            "supp_op": str(bool(args.pixel10_8e)).lower(),
                             "android_version": args.android_version or "android12",
                             "kernel_version": args.kernel_version or "5.10",
                             "sub_level": args.sub_level,
@@ -4706,7 +4706,7 @@ def cmd_artifacts(args):
 
 
 def cmd_list(args):
-    if args.oneplus:
+    if args.pixel10:
         print(t("op_list_title"))
         for did, info in ONEPLUS_DEVICES.items():
             print(f"  {did:<35} {info['name']:<20} {info['cpu']:<10} {info['android']} {info['kernel']}")
@@ -4736,7 +4736,7 @@ def cmd_list(args):
     print(f"  --matrix {'both':<10} both")
     print(f"  --matrix {'full':<10} full")
     print(f"  --matrix {'all-managers':<10} all-managers")
-    print(f"  --oneplus{'':<10} (--device required)")
+    print(f"  --pixel10{'':<10} (--device required)")
     print(f"\n  " + t("default_build_info"))
 
     print(f"\n{t('ksu_variants_label')}")
@@ -4751,7 +4751,7 @@ def cmd_list(args):
     print(f"\n{t('features_title')}")
     print(f"  --[no-]zram  --[no-]bbg  --[no-]ddk  --[no-]kpm")
     print(f"  --[no-]susfs  --[no-]rekernel  --[no-]ntsync  --[no-]networking")
-    print(f"  --[no-]oneplus-8e  --[no-]zram-full-algo  --zram-extra-algos")
+    print(f"  --[no-]pixel10-8e  --[no-]zram-full-algo  --zram-extra-algos")
 
     print(f"\n{t('commands_label')}")
     cmds = [("login", "cmd_login_help"),("logout", "cmd_logout_help"),("whoami", "cmd_whoami_help"),
@@ -4808,7 +4808,7 @@ def refresh_workflow_names():
         "a15": "build_target_a15",
         "a16": "build_target_a16",
         "custom": "build_target_custom",
-        "oneplus": "build_target_oneplus",
+        "pixel10": "build_target_pixel10",
     }
     for target, key in name_keys.items():
         WORKFLOWS[target]["name"] = t(key)
@@ -5188,7 +5188,7 @@ def main():
         epilog=t("build_epilog"))
     build_mode = build_parser.add_mutually_exclusive_group()
     build_mode.add_argument("--matrix", choices=MATRIX_TARGETS_ALL, help=t("arg_matrix"))
-    build_mode.add_argument("--oneplus", action="store_true", help=t("arg_oneplus"))
+    build_mode.add_argument("--pixel10", action="store_true", help=t("arg_pixel10"))
     build_parser.add_argument("--ref", help=t("arg_ref"))
     build_parser.add_argument("--ksu", dest="ksu_variant", choices=KSU_VARIANTS + ["all"], help=t("arg_ksu"))
     build_parser.add_argument(
@@ -5215,7 +5215,7 @@ def main():
     build_parser.add_argument("--os-patch-level", help=t("arg_os_patch_level"))
     build_parser.add_argument("--revision", help=t("arg_revision"))
     
-    build_parser.add_argument("--build-scope", choices=["Both", "GKI", "OnePlus"], help=t("arg_build_scope"))
+    build_parser.add_argument("--build-scope", choices=["Both", "GKI", "Pixel 10"], help=t("arg_build_scope"))
     build_parser.add_argument("--manager-variants", help=t("arg_manager_variants"))
     
     build_parser.add_argument("--zram", action="store_true", help=t("arg_zram"))
@@ -5230,10 +5230,10 @@ def main():
     build_parser.add_argument("--no-susfs", dest="susfs", action="store_false", help=t("arg_no_susfs"))
     build_parser.add_argument("--rekernel", action="store_true", help=t("arg_rekernel"))
     build_parser.add_argument("--no-rekernel", dest="rekernel", action="store_false", help=t("arg_no_rekernel"))
-    build_parser.add_argument("--oneplus-8e", action="store_true", help=t("arg_oneplus_8e"))
+    build_parser.add_argument("--pixel10-8e", action="store_true", help=t("arg_pixel10_8e"))
     build_parser.add_argument(
-        "--no-oneplus-8e",
-        dest="oneplus_8e",
+        "--no-pixel10-8e",
+        dest="pixel10_8e",
         action="store_false",
         help=argparse.SUPPRESS,
     )
@@ -5286,7 +5286,7 @@ def main():
         kpm=None,
         susfs=None,
         rekernel=None,
-        oneplus_8e=None,
+        pixel10_8e=None,
         lz4kd=None,
         bbr=None,
         proxy_optimization=None,
@@ -5375,7 +5375,7 @@ def main():
     list_parser = subparsers.add_parser("list", 
         help=t("cmd_list_help"),
         description=t("cmd_list_desc"))
-    list_parser.add_argument("--oneplus", action="store_true", help=t("arg_oneplus"))
+    list_parser.add_argument("--pixel10", action="store_true", help=t("arg_pixel10"))
     list_parser.set_defaults(func=cmd_list)
 
     self_test_parser = subparsers.add_parser(

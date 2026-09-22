@@ -116,7 +116,7 @@
     <string name="build_target_title">构建目标</string>
     <string name="build_target_desc">选择标准 GKI 构建或 OnePlus/Oplus 机型构建。</string>
     <string name="build_target_gki">GKI</string>
-    <string name="build_target_oneplus">OnePlus</string>
+    <string name="build_target_pixel10">OnePlus</string>
     <string name="build_target_line">构建目标: %1$s</string>
     <string name="build_submit">提交构建</string>
     <string name="build_running">构建进行中</string>

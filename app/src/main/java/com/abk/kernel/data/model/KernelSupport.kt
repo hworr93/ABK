@@ -189,36 +189,36 @@ object KernelSupport {
     fun androidForKernel(kernelVersion: String): String =
         lines.firstOrNull { it.kernelVersion == kernelVersion }?.androidVersion ?: lines.first().androidVersion
 
-    fun onePlusAndroidVersions(): List<String> = pixel10Lines.map { it.androidVersion }
+    fun pixel10AndroidVersions(): List<String> = pixel10Lines.map { it.androidVersion }
 
-    fun onePlusKernelVersions(): List<String> = pixel10Lines.map { it.kernelVersion }
+    fun pixel10KernelVersions(): List<String> = pixel10Lines.map { it.kernelVersion }
 
-    fun onePlusKernelForAndroid(androidVersion: String): String =
+    fun pixel10KernelForAndroid(androidVersion: String): String =
         pixel10Lines.firstOrNull { it.androidVersion == androidVersion }?.kernelVersion
             ?: pixel10Lines.first().kernelVersion
 
-    fun onePlusAndroidForKernel(kernelVersion: String): String =
+    fun pixel10AndroidForKernel(kernelVersion: String): String =
         pixel10Lines.firstOrNull { it.kernelVersion == kernelVersion }?.androidVersion
             ?: pixel10Lines.first().androidVersion
 
-    fun onePlusSusfsSupported(androidVersion: String, kernelVersion: String): Boolean =
+    fun pixel10SusfsSupported(androidVersion: String, kernelVersion: String): Boolean =
         "$androidVersion/$kernelVersion" in setOf("android14/6.1", "android15/6.6", "android16/6.12")
 
-    fun onePlusLz4kdSupported(kernelVersion: String): Boolean = kernelVersion != "6.12"
+    fun pixel10Lz4kdSupported(kernelVersion: String): Boolean = kernelVersion != "6.12"
 
     fun normalize(config: KernelBuildConfig): KernelBuildConfig {
         val target = normalizeBuildTarget(config.buildTarget)
-        val isOnePlus = target == BUILD_TARGET_PIXEL10
+        val isPixel10 = target == BUILD_TARGET_PIXEL10
         val isCustomSource = target == BUILD_TARGET_CUSTOM_SOURCE
-        val requestedOnePlusManifest = config.onePlusDeviceManifest.orEmpty().trim().lowercase()
-        val onePlusDeviceManifest = requestedOnePlusManifest
+        val requestedPixel10Manifest = config.pixel10DeviceManifest.orEmpty().trim().lowercase()
+        val pixel10DeviceManifest = requestedPixel10Manifest
             .takeIf { it in pixel10DeviceManifestOptions }
-            ?: "oneplus_12_b"
-        val onePlusProfile = onePlusDeviceProfile(onePlusDeviceManifest)
-        val line = if (isOnePlus) {
-            onePlusProfile
+            ?: "muzel"
+        val pixel10Profile = pixel10DeviceProfile(pixel10DeviceManifest)
+        val line = if (isPixel10) {
+            pixel10Profile
                 ?.let { KernelVersionLine(it.androidVersion, it.kernelVersion) }
-                ?: onePlusLineFor(config.androidVersion, config.kernelVersion)
+                ?: pixel10LineFor(config.androidVersion, config.kernelVersion)
         } else {
             lineFor(config.androidVersion, config.kernelVersion)
         }
@@ -235,21 +235,21 @@ object KernelSupport {
             config.osPatchLevel in patchOptions -> config.osPatchLevel
             else -> patchOptions.maxByOrNull(::patchMonthIndex) ?: latestEntry(line).osPatchLevel
         }
-        val onePlusCpu = if (isOnePlus) {
-            onePlusProfile?.cpu
-                ?: config.onePlusCpu.orEmpty().trim().lowercase().takeIf { it in pixel10CpuOptions }
+        val pixel10Cpu = if (isPixel10) {
+            pixel10Profile?.cpu
+                ?: config.pixel10Cpu.orEmpty().trim().lowercase().takeIf { it in pixel10CpuOptions }
                 ?: "sm8650"
         } else {
             "sm8650"
         }
         val normalizedKsuBranch = normalizeKsuBranch(
-            if (isOnePlus || ksuVariant == KSU_VARIANT_NONE) KSU_BRANCH_STABLE else config.kernelsuBranch
+            if (isPixel10 || ksuVariant == KSU_VARIANT_NONE) KSU_BRANCH_STABLE else config.kernelsuBranch
         )
-        val onePlusKpmSupported = ksuVariant in setOf(KSU_VARIANT_SUKISU, KSU_VARIANT_RESUKISU)
+        val pixel10KpmSupported = ksuVariant in setOf(KSU_VARIANT_SUKISU, KSU_VARIANT_RESUKISU)
         val gkiKpmSupported = isKpmSupported(BUILD_TARGET_GKI, ksuVariant, normalizedKsuBranch)
-        val onePlusProxyAllowed = !onePlusCpu.startsWith("mt")
-        val onePlusSusfsEnabled = onePlusSusfsSupported(line.androidVersion, line.kernelVersion)
-        val onePlusLz4kdEnabled = onePlusLz4kdSupported(line.kernelVersion)
+        val pixel10ProxyAllowed = !pixel10Cpu.startsWith("mt")
+        val pixel10SusfsEnabled = pixel10SusfsSupported(line.androidVersion, line.kernelVersion)
+        val pixel10Lz4kdEnabled = pixel10Lz4kdSupported(line.kernelVersion)
         return config.copy(
             buildTarget = target,
             sourceUrl = config.sourceUrl.trim(),
@@ -265,33 +265,33 @@ object KernelSupport {
             osPatchLevel = osPatch,
             kernelsuVariant = ksuVariant,
             kernelsuBranch = normalizedKsuBranch,
-            customRef = if (isOnePlus) "" else config.customRef.trim(),
-            version = if (isOnePlus) "" else config.version,
-            buildTime = if (isOnePlus) "" else config.buildTime,
-            useZram = if (isOnePlus) false else config.useZram,
-            useDdk = if (isOnePlus) false else config.useDdk,
-            useNtsync = if (isOnePlus) false else config.useNtsync,
-            useNetworking = if (isOnePlus) false else config.useNetworking,
-            useRekernel = if (isOnePlus) false else config.useRekernel,
+            customRef = if (isPixel10) "" else config.customRef.trim(),
+            version = if (isPixel10) "" else config.version,
+            buildTime = if (isPixel10) "" else config.buildTime,
+            useZram = if (isPixel10) false else config.useZram,
+            useDdk = if (isPixel10) false else config.useDdk,
+            useNtsync = if (isPixel10) false else config.useNtsync,
+            useNetworking = if (isPixel10) false else config.useNetworking,
+            useRekernel = if (isPixel10) false else config.useRekernel,
             useKpm = when {
                 ksuVariant == KSU_VARIANT_NONE -> false
-                isOnePlus -> onePlusKpmSupported && config.useKpm
+                isPixel10 -> pixel10KpmSupported && config.useKpm
                 else -> gkiKpmSupported && config.useKpm
             },
             cancelSusfs = when {
                 ksuVariant == KSU_VARIANT_NONE -> true
-                isOnePlus && !onePlusSusfsEnabled -> true
+                isPixel10 && !pixel10SusfsEnabled -> true
                 else -> config.cancelSusfs
             },
-            kpmPassword = if (isOnePlus || ksuVariant == KSU_VARIANT_NONE || !gkiKpmSupported) "" else config.kpmPassword,
-            virtualizationSupport = if (isOnePlus) "off" else normalizeVirtualizationSupport(line.kernelVersion, config.virtualizationSupport),
-            customKernelOptions = if (isOnePlus) {
+            kpmPassword = if (isPixel10 || ksuVariant == KSU_VARIANT_NONE || !gkiKpmSupported) "" else config.kpmPassword,
+            virtualizationSupport = if (isPixel10) "off" else normalizeVirtualizationSupport(line.kernelVersion, config.virtualizationSupport),
+            customKernelOptions = if (isPixel10) {
                 emptyList()
             } else {
                 normalizeCustomKernelOptions(config.customKernelOptions)
             },
-            useCustomExternalModules = if (isOnePlus) false else config.useCustomExternalModules,
-            customExternalModules = if (isOnePlus) {
+            useCustomExternalModules = if (isPixel10) false else config.useCustomExternalModules,
+            customExternalModules = if (isPixel10) {
                 emptyList()
             } else {
                 config.customExternalModules.orEmpty()
@@ -324,16 +324,16 @@ object KernelSupport {
                         )
                     }
             },
-            onePlusCpu = if (isOnePlus) onePlusCpu else "sm8650",
-            onePlusDeviceManifest = if (isOnePlus) onePlusDeviceManifest else "oneplus_12_b",
-            onePlusUseLz4kd = if (isOnePlus) onePlusLz4kdEnabled && config.onePlusUseLz4kd else false,
-            onePlusUseBbr = if (isOnePlus) config.onePlusUseBbr else false,
-            onePlusUseProxyOptimization = if (isOnePlus) {
-                onePlusProxyAllowed && config.onePlusUseProxyOptimization
+            pixel10Cpu = if (isPixel10) pixel10Cpu else "sm8650",
+            pixel10DeviceManifest = if (isPixel10) pixel10DeviceManifest else "muzel",
+            pixel10UseLz4kd = if (isPixel10) pixel10Lz4kdEnabled && config.pixel10UseLz4kd else false,
+            pixel10UseBbr = if (isPixel10) config.pixel10UseBbr else false,
+            pixel10UseProxyOptimization = if (isPixel10) {
+                pixel10ProxyAllowed && config.pixel10UseProxyOptimization
             } else {
                 true
             },
-            onePlusUseUnicodeBypass = if (isOnePlus) config.onePlusUseUnicodeBypass else false
+            pixel10UseUnicodeBypass = if (isPixel10) config.pixel10UseUnicodeBypass else false
         )
     }
 
@@ -388,15 +388,15 @@ object KernelSupport {
 
     fun ksuVariantOptions(): List<String> = KSU_VARIANT_OPTIONS
 
-    fun onePlusKsuVariantOptions(): List<String> = ONEPLUS_KSU_VARIANT_OPTIONS
+    fun pixel10KsuVariantOptions(): List<String> = PIXEL10_KSU_VARIANT_OPTIONS
 
-    fun onePlusDeviceProfile(manifest: String?): Pixel10DeviceProfile? {
+    fun pixel10DeviceProfile(manifest: String?): Pixel10DeviceProfile? {
         val normalized = manifest.orEmpty().trim().lowercase()
         return pixel10DeviceProfiles.firstOrNull { it.manifest == normalized }
     }
 
-    fun onePlusDeviceLabel(manifest: String): String {
-        val profile = onePlusDeviceProfile(manifest) ?: return manifest
+    fun pixel10DeviceLabel(manifest: String): String {
+        val profile = pixel10DeviceProfile(manifest) ?: return manifest
         return "${profile.displayName} · ${profile.systemVersion} · ${profile.androidVersion}/${profile.kernelVersion} · ${profile.cpu}"
     }
 
@@ -442,7 +442,7 @@ object KernelSupport {
             else -> KSU_VARIANT_RESUKISU
         }
         return if (normalizeBuildTarget(buildTarget) == BUILD_TARGET_PIXEL10) {
-            normalized.takeIf { it in ONEPLUS_KSU_VARIANT_OPTIONS } ?: KSU_VARIANT_SUKISU
+            normalized.takeIf { it in PIXEL10_KSU_VARIANT_OPTIONS } ?: KSU_VARIANT_SUKISU
         } else {
             normalized.takeIf { it in KSU_VARIANT_OPTIONS } ?: KSU_VARIANT_RESUKISU
         }
@@ -516,7 +516,7 @@ object KernelSupport {
             ?: lines.first()
     }
 
-    private fun onePlusLineFor(androidVersion: String, kernelVersion: String): KernelVersionLine {
+    private fun pixel10LineFor(androidVersion: String, kernelVersion: String): KernelVersionLine {
         val byPair = pixel10Lines.firstOrNull {
             it.androidVersion == androidVersion && it.kernelVersion == kernelVersion
         }

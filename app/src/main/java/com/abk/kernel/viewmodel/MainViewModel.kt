@@ -4861,7 +4861,7 @@ class MainViewModel @JvmOverloads constructor(
 
     fun upsertCustomKernelOption(option: CustomKernelOption, editingIndex: Int? = null) {
         val currentConfig = KernelSupport.normalize(_uiState.value.buildConfig)
-        if (currentConfig.buildTarget == BUILD_TARGET_ONEPLUS) return
+        if (currentConfig.buildTarget == BUILD_TARGET_PIXEL10) return
         val symbol = KernelSupport.normalizeCustomKernelSymbol(option.symbol)
         require(symbol.isNotBlank()) { text(R.string.build_kernel_option_symbol_invalid) }
         val normalizedOption = CustomKernelOption(
@@ -4892,7 +4892,7 @@ class MainViewModel @JvmOverloads constructor(
 
     fun removeCustomKernelOptions(indices: Collection<Int>) {
         val currentConfig = KernelSupport.normalize(_uiState.value.buildConfig)
-        if (currentConfig.buildTarget == BUILD_TARGET_ONEPLUS) return
+        if (currentConfig.buildTarget == BUILD_TARGET_PIXEL10) return
         val updated = removeCustomKernelOptionsAtIndices(currentConfig.customKernelOptions, indices)
         if (updated == currentConfig.customKernelOptions) return
         updateBuildConfig(currentConfig.copy(customKernelOptions = updated))
@@ -4900,7 +4900,7 @@ class MainViewModel @JvmOverloads constructor(
 
     fun clearCustomKernelOptions() {
         val currentConfig = KernelSupport.normalize(_uiState.value.buildConfig)
-        if (currentConfig.buildTarget == BUILD_TARGET_ONEPLUS || currentConfig.customKernelOptions.isEmpty()) return
+        if (currentConfig.buildTarget == BUILD_TARGET_PIXEL10 || currentConfig.customKernelOptions.isEmpty()) return
         updateBuildConfig(currentConfig.copy(customKernelOptions = emptyList()))
     }
 
@@ -5678,8 +5678,8 @@ internal fun sanitizeBuildPlanName(name: String, config: KernelBuildConfig): Str
     name.trim().ifBlank { defaultBuildPlanName(config) }.take(BUILD_PLAN_NAME_LIMIT)
 
 internal fun defaultBuildPlanName(config: KernelBuildConfig): String {
-    if (config.buildTarget == BUILD_TARGET_ONEPLUS) {
-        return listOf(KernelSupport.onePlusDeviceLabel(config.onePlusDeviceManifest), config.kernelsuVariant)
+    if (config.buildTarget == BUILD_TARGET_PIXEL10) {
+        return listOf(KernelSupport.pixel10DeviceLabel(config.pixel10DeviceManifest), config.kernelsuVariant)
             .filter { it.isNotBlank() }
             .joinToString(" · ")
     }
@@ -5763,8 +5763,8 @@ internal fun encodeBuildPlanPayload(
         writer.writeString(config.osPatchLevel)
         writer.writeString(config.revision)
         writer.writeString(config.buildTarget)
-        writer.writeString(config.onePlusCpu)
-        writer.writeString(config.onePlusDeviceManifest)
+        writer.writeString(config.pixel10Cpu)
+        writer.writeString(config.pixel10DeviceManifest)
         writer.writeString(config.sourceUrl)
         writer.writeString(config.sourceRef)
         writer.writeString(config.sourceAccessMode)
@@ -5864,7 +5864,7 @@ internal fun decodeBuildPlanPayload(
         val subLevel = reader.readString()
         val osPatchLevel = reader.readString()
         val revision = reader.readString()
-        if (version >= BUILD_PLAN_ONEPLUS_FIELDS_VERSION) {
+        if (version >= BUILD_PLAN_PIXEL10_FIELDS_VERSION) {
             val targetBase = baseConfig.copy(
                 androidVersion = androidVersion,
                 kernelVersion = kernelVersion,
@@ -5872,8 +5872,8 @@ internal fun decodeBuildPlanPayload(
                 osPatchLevel = osPatchLevel,
                 revision = revision,
                 buildTarget = reader.readString(),
-                onePlusCpu = reader.readString(),
-                onePlusDeviceManifest = reader.readString()
+                pixel10Cpu = reader.readString(),
+                pixel10DeviceManifest = reader.readString()
             )
             if (version >= BUILD_PLAN_CUSTOM_SOURCE_FIELDS_VERSION) {
                 val sourceUrl = reader.readString()
@@ -5993,10 +5993,10 @@ internal fun decodeBuildPlanPayload(
         customKernelOptions = kernelOptions,
         useCustomExternalModules = featureMask.hasBuildPlanFlag(10),
         customExternalModules = modules,
-        onePlusUseLz4kd = featureMask.hasBuildPlanFlag(11),
-        onePlusUseBbr = featureMask.hasBuildPlanFlag(12),
-        onePlusUseProxyOptimization = featureMask.hasBuildPlanFlag(13),
-        onePlusUseUnicodeBypass = featureMask.hasBuildPlanFlag(14)
+        pixel10UseLz4kd = featureMask.hasBuildPlanFlag(11),
+        pixel10UseBbr = featureMask.hasBuildPlanFlag(12),
+        pixel10UseProxyOptimization = featureMask.hasBuildPlanFlag(13),
+        pixel10UseUnicodeBypass = featureMask.hasBuildPlanFlag(14)
     )
     return DecodedBuildPlanCode(
         name = name,
@@ -6093,10 +6093,10 @@ private fun KernelBuildConfig.toBuildPlanFeatureMask(): Int {
     set(8, suppOp)
     set(9, zramFullAlgo)
     set(10, useCustomExternalModules)
-    set(11, onePlusUseLz4kd)
-    set(12, onePlusUseBbr)
-    set(13, onePlusUseProxyOptimization)
-    set(14, onePlusUseUnicodeBypass)
+    set(11, pixel10UseLz4kd)
+    set(12, pixel10UseBbr)
+    set(13, pixel10UseProxyOptimization)
+    set(14, pixel10UseUnicodeBypass)
     return mask
 }
 
@@ -6266,7 +6266,7 @@ private const val BUILD_PLAN_LEGACY_CODE_PREFIX = "ABKP1:"
 private const val BUILD_PLAN_CODE_VERSION = 8
 private const val BUILD_PLAN_MIN_SUPPORTED_VERSION = 2
 private const val BUILD_PLAN_CUSTOM_REF_VERSION = 3
-private const val BUILD_PLAN_ONEPLUS_FIELDS_VERSION = 4
+private const val BUILD_PLAN_PIXEL10_FIELDS_VERSION = 4
 private const val BUILD_PLAN_KSU_BRANCH_V5_VERSION = 5
 private const val BUILD_PLAN_MODULE_METADATA_VERSION = 6
 private const val BUILD_PLAN_KERNEL_OPTIONS_VERSION = 7
@@ -6604,20 +6604,20 @@ internal fun KernelBuildConfig.toInputMap(): Map<String, String> {
             "custom_kernel_options" to config.customKernelOptions.mapNotNull { it.toWorkflowLine() }.joinToString("\n"),
         )
     }
-    if (config.buildTarget == BUILD_TARGET_ONEPLUS) {
+    if (config.buildTarget == BUILD_TARGET_PIXEL10) {
         return mapOf(
-            "cpu" to config.onePlusCpu,
-            "device_manifest" to config.onePlusDeviceManifest,
+            "cpu" to config.pixel10Cpu,
+            "device_manifest" to config.pixel10DeviceManifest,
             "android_version" to config.androidVersion,
             "kernel_version" to config.kernelVersion,
             "ksu_variant" to config.kernelsuVariant,
             "enable_susfs" to (!config.cancelSusfs && config.kernelsuVariant != KSU_VARIANT_NONE).toString(),
             "use_kpm" to config.useKpm.toString(),
-            "use_lz4kd" to config.onePlusUseLz4kd.toString(),
+            "use_lz4kd" to config.pixel10UseLz4kd.toString(),
             "use_bbg" to config.useBbg.toString(),
-            "use_bbr" to config.onePlusUseBbr.toString(),
-            "use_proxy_optimization" to config.onePlusUseProxyOptimization.toString(),
-            "use_unicode_bypass" to config.onePlusUseUnicodeBypass.toString()
+            "use_bbr" to config.pixel10UseBbr.toString(),
+            "use_proxy_optimization" to config.pixel10UseProxyOptimization.toString(),
+            "use_unicode_bypass" to config.pixel10UseUnicodeBypass.toString()
         )
     }
     return mapOf(
@@ -6688,8 +6688,8 @@ private const val FORK_ARTIFACT_SIGNING_SECRET_NAME = "ABK_ARTIFACT_SIGNING_KEY_
 private const val FORK_CUSTOM_SOURCE_SECRET_NAME = "ABK_CUSTOM_SOURCE_GITHUB_TOKEN"
 private const val FORK_ARTIFACT_SIGNING_RELEASE_TAG = "abk-artifact-key"
 private const val FORK_ARTIFACT_SIGNING_PUBLIC_KEY_ASSET_NAME = "abk-artifact-signing-public.pem"
-private const val ONEPLUS_WORKFLOW_FILE = "oneplus-custom.yml"
-private val buildWorkflowFiles = listOf(KERNEL_WORKFLOW_FILE, CUSTOM_SOURCE_WORKFLOW_FILE, ONEPLUS_WORKFLOW_FILE)
+private const val PIXEL10_WORKFLOW_FILE = "pixel10-custom.yml"
+private val buildWorkflowFiles = listOf(KERNEL_WORKFLOW_FILE, CUSTOM_SOURCE_WORKFLOW_FILE, PIXEL10_WORKFLOW_FILE)
 private const val MIRROR_WORKFLOW_FILE = "mirror-custom-artifacts.yml"
 private val ACTIVE_BUILD_STATUSES = setOf(BuildStatus.QUEUED, BuildStatus.IN_PROGRESS)
 private const val MANAGER_SETTING_APP_PROFILE_TEMPLATES = "app_profile_templates"
@@ -6720,7 +6720,7 @@ private data class Quadruple<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
 
 private fun workflowFileFor(config: KernelBuildConfig): String =
     when (KernelSupport.normalizeBuildTarget(config.buildTarget)) {
-        BUILD_TARGET_ONEPLUS -> ONEPLUS_WORKFLOW_FILE
+        BUILD_TARGET_PIXEL10 -> PIXEL10_WORKFLOW_FILE
         BUILD_TARGET_CUSTOM_SOURCE -> CUSTOM_SOURCE_WORKFLOW_FILE
         else -> KERNEL_WORKFLOW_FILE
     }

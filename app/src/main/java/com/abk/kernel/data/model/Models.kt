@@ -607,7 +607,7 @@ val KSU_VARIANT_OPTIONS = listOf(
     KSU_VARIANT_RESUKISU,
     KSU_VARIANT_NONE
 )
-val ONEPLUS_KSU_VARIANT_OPTIONS = listOf(
+val PIXEL10_KSU_VARIANT_OPTIONS = listOf(
     KSU_VARIANT_OFFICIAL,
     KSU_VARIANT_SUKISU,
     KSU_VARIANT_RESUKISU,
@@ -648,12 +648,12 @@ data class KernelBuildConfig(
     val customKernelOptions: List<CustomKernelOption> = emptyList(),
     val useCustomExternalModules: Boolean = false,
     val customExternalModules: List<CustomExternalModule> = emptyList(),
-    val onePlusCpu: String = "sm8650",
-    val onePlusDeviceManifest: String = "oneplus_12_b",
-    val onePlusUseLz4kd: Boolean = false,
-    val onePlusUseBbr: Boolean = false,
-    val onePlusUseProxyOptimization: Boolean = true,
-    val onePlusUseUnicodeBypass: Boolean = false
+    val pixel10Cpu: String = "sm8650",
+    val pixel10DeviceManifest: String = "muzel",
+    val pixel10UseLz4kd: Boolean = false,
+    val pixel10UseBbr: Boolean = false,
+    val pixel10UseProxyOptimization: Boolean = true,
+    val pixel10UseUnicodeBypass: Boolean = false
 )
 
 data class AbkRuntimeStatus(
