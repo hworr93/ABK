@@ -1,4 +1,4 @@
-name: OnePlus 内核构建流程
+name: Pixel 10 Kernel Build Process
 
 permissions:
   contents: write
@@ -93,7 +93,7 @@ jobs:
             android14/6.1|android15/6.6|android16/6.12) ;;
             *)
               if [ "$ENABLE_SUSFS" = "true" ]; then
-                echo "::warning::OnePlus SUSFS supports android14/6.1, android15/6.6, and android16/6.12; disabling for $ANDROID_VERSION/$KERNEL_VERSION."
+                echo "::warning::Pixel 10 SUSFS supports android14/6.1, android15/6.6, and android16/6.12; disabling for $ANDROID_VERSION/$KERNEL_VERSION."
               fi
               ENABLE_SUSFS="false"
               ;;
@@ -103,44 +103,11 @@ jobs:
             effective_proxy="false"
           fi
           case "$DEVICE_MANIFEST" in
-            oneplus_15) device_name="OnePlus 15"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_15t) device_name="OnePlus 15T"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_13_b) device_name="OnePlus 13"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_13s_b) device_name="OnePlus 13s"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_13t_b) device_name="OnePlus 13T"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_ace5_pro_b) device_name="OnePlus Ace5 Pro"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_ace_6) device_name="OnePlus Ace 6"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_pad_2_pro_b) device_name="OnePlus Pad 2 Pro"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_pad_3_b) device_name="OnePlus Pad 3"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_ace5_ultra_b) device_name="OnePlus Ace5 Ultra"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_turbo_6) device_name="OnePlus Turbo 6"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_12_b) device_name="OnePlus 12"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_ace3_pro_b) device_name="OnePlus Ace3 Pro"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_ace5_b) device_name="OnePlus Ace5"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_13r_b) device_name="OnePlus 13R"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_pad2_b) device_name="OnePlus Pad 2"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_pad_pro_b) device_name="OnePlus Pad Pro"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_ace5_race_b) device_name="OnePlus Ace5 Race"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_nord_5_b) device_name="OnePlus Nord 5"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_11_b) device_name="OnePlus 11"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_12r_b) device_name="OnePlus 12R"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_ace2_pro_b) device_name="OnePlus Ace2 Pro"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_ace3_b) device_name="OnePlus Ace3"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_open_b) device_name="OnePlus Open"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_10t_v) device_name="OnePlus 10T"; system_version="ColorOS/OxygenOS 15" ;;
-            oneplus_11r_b) device_name="OnePlus 11R"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_ace2_b) device_name="OnePlus Ace2"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_ace_pro_v) device_name="OnePlus Ace Pro"; system_version="ColorOS/OxygenOS 15" ;;
-            oneplus_10_pro_b) device_name="OnePlus 10 Pro"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_ace_3v_b) device_name="OnePlus Ace 3V"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_turbo_6v) device_name="OnePlus Turbo 6V"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_nord_4_b) device_name="OnePlus Nord 4"; system_version="ColorOS/OxygenOS 16" ;;
-            oneplus_nord_ce4_lite_5g) device_name="OnePlus Nord CE4 Lite 5G"; system_version="ColorOS/OxygenOS 15" ;;
-            oneplus_nord_ce4_b) device_name="OnePlus Nord CE4"; system_version="ColorOS/OxygenOS 16" ;;
-            *) device_name="$DEVICE_MANIFEST"; system_version="未知系统版本" ;;
+            muzel) device_name="Pixel 10"; system_version="Android 16" ;;
+            *) device_name="$DEVICE_MANIFEST"; system_version="Unknown System Version" ;;
           esac
           if [ "$effective_lz4kd" = "true" ] && [ "$KERNEL_VERSION" != "5.10" ] && [ "$KERNEL_VERSION" != "5.15" ] && [ "$KERNEL_VERSION" != "6.1" ] && [ "$KERNEL_VERSION" != "6.6" ]; then
-            echo "::warning::当前 OnePlus 内核版本不在 lz4kd 支持矩阵内，已关闭 lz4kd。"
+            echo "::warning::当前 Pixel 10 内核版本不在 lz4kd 支持矩阵内，已关闭 lz4kd。"
             effective_lz4kd="false"
           fi
           device_label="${device_name} · ${system_version} · ${ANDROID_VERSION}/${KERNEL_VERSION} · ${CPU}"
@@ -161,14 +128,14 @@ jobs:
           echo "========================================"
           echo "       内核构建配置摘要"
           echo "========================================"
-          echo "构建目标      : OnePlus"
+          echo "构建目标      : Pixel 10"
           echo "机型配置      : $device_label"
           echo "CPU 分支      : $CPU"
           echo "上游 XML      : $DEVICE_MANIFEST"
           echo "Android 版本  : $ANDROID_VERSION"
           echo "内核版本      : $KERNEL_VERSION"
-          echo "子版本号      : OnePlus manifest"
-          echo "补丁级别      : OnePlus manifest"
+          echo "子版本号      : Pixel 10 manifest"
+          echo "补丁级别      : Pixel 10 manifest"
           echo "KSU 变体      : $KSU_VARIANT"
           echo "KSU 分支      : OnePlus upstream"
           echo "构建时间      : OnePlus upstream"
@@ -209,7 +176,7 @@ jobs:
             exit 1
           fi
           if [ "$USE_LZ4KD" = "true" ] && [ "$KERNEL_VERSION" != "5.10" ] && [ "$KERNEL_VERSION" != "5.15" ] && [ "$KERNEL_VERSION" != "6.1" ] && [ "$KERNEL_VERSION" != "6.6" ]; then
-            echo "::warning::当前 OnePlus 内核版本不在 lz4kd 支持矩阵内，已关闭 lz4kd。"
+            echo "::warning::当前 Pixel 10 内核版本不在 lz4kd 支持矩阵内，已关闭 lz4kd。"
           fi
 
       - name: 最大化构建空间
@@ -290,11 +257,11 @@ jobs:
           set -euo pipefail
           git config --global user.name "abk-builder"
           git config --global user.email "abk-builder@users.noreply.github.com"
-          rm -rf oneplus_workspace
-          mkdir -p oneplus_workspace/kernel_workspace
-          cd oneplus_workspace/kernel_workspace
-          repo init -u https://github.com/Xiaomichael/kernel_manifest.git \
-            -b "refs/heads/oneplus/${CPU}" \
+          rm -rf pixel10_workspace
+          mkdir -p pixel10_workspace/kernel_workspace
+          cd pixel10_workspace/kernel_workspace
+          repo init -u https://github.com/Blackmanx/kernel_google_muzel.git \
+            -b "refs/heads/main/${CPU}" \
             -m "${DEVICE_MANIFEST}.xml" \
             --depth=1
           case "$DEVICE_MANIFEST" in
@@ -324,7 +291,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          WORKSPACE="$GITHUB_WORKSPACE/oneplus_workspace"
+          WORKSPACE="$GITHUB_WORKSPACE/pixel10_workspace"
           KERNEL_ROOT="$WORKSPACE/kernel_workspace/kernel_platform"
           COMMON_ROOT="$KERNEL_ROOT/common"
 
@@ -453,14 +420,14 @@ jobs:
       - name: 确保 KernelSU ABI 兼容
         if: ${{ inputs.ksu_variant != 'None' }}
         shell: bash
-        run: python3 "$GITHUB_WORKSPACE/.github/scripts/ensure-ksu-compat.py" "$GITHUB_WORKSPACE/oneplus_workspace/kernel_workspace/kernel_platform"
+        run: python3 "$GITHUB_WORKSPACE/.github/scripts/ensure-ksu-compat.py" "$GITHUB_WORKSPACE/pixel10_workspace/kernel_workspace/kernel_platform"
 
       - name: 修复 SukiSU SUSFS 源码兼容
         if: ${{ inputs.ksu_variant == 'SukiSU' }}
         shell: bash
         run: |
           set -euo pipefail
-          WORKSPACE="$GITHUB_WORKSPACE/oneplus_workspace"
+          WORKSPACE="$GITHUB_WORKSPACE/pixel10_workspace"
           KERNEL_ROOT="$WORKSPACE/kernel_workspace/kernel_platform"
 
           if [ "$EFFECTIVE_ENABLE_SUSFS" != "true" ]; then
@@ -589,7 +556,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          WORKSPACE="$GITHUB_WORKSPACE/oneplus_workspace"
+          WORKSPACE="$GITHUB_WORKSPACE/pixel10_workspace"
           KERNEL_ROOT="$WORKSPACE/kernel_workspace/kernel_platform"
 
           KSU_BUILD_DIR=""
@@ -672,7 +639,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          KERNEL_ROOT="$GITHUB_WORKSPACE/oneplus_workspace/kernel_workspace/kernel_platform"
+          KERNEL_ROOT="$GITHUB_WORKSPACE/pixel10_workspace/kernel_workspace/kernel_platform"
           cd "$KERNEL_ROOT"
 
           KSU_BUILD_DIR=""
@@ -758,7 +725,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          WORKSPACE="$GITHUB_WORKSPACE/oneplus_workspace"
+          WORKSPACE="$GITHUB_WORKSPACE/pixel10_workspace"
           KERNEL_ROOT="$WORKSPACE/kernel_workspace/kernel_platform"
 
           KSU_KERNEL_DIR=""
@@ -828,7 +795,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          WORKSPACE="$GITHUB_WORKSPACE/oneplus_workspace"
+          WORKSPACE="$GITHUB_WORKSPACE/pixel10_workspace"
           KERNEL_ROOT="$WORKSPACE/kernel_workspace/kernel_platform"
           COMMON_ROOT="$WORKSPACE/kernel_workspace/kernel_platform/common"
           DEFCONFIG_PATH="$COMMON_ROOT/arch/arm64/configs/gki_defconfig"
@@ -971,7 +938,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          WORKSPACE="$GITHUB_WORKSPACE/oneplus_workspace"
+          WORKSPACE="$GITHUB_WORKSPACE/pixel10_workspace"
           KERNEL_ROOT="$WORKSPACE/kernel_workspace/kernel_platform"
           COMMON_ROOT="$WORKSPACE/kernel_workspace/kernel_platform/common"
           cd "$COMMON_ROOT"
@@ -1023,7 +990,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          WORKSPACE="$GITHUB_WORKSPACE/oneplus_workspace"
+          WORKSPACE="$GITHUB_WORKSPACE/pixel10_workspace"
           cd "$WORKSPACE"
           git clone https://github.com/Xiaomichael/AnyKernel3 --depth=1
           rm -rf AnyKernel3/.git
@@ -1074,7 +1041,7 @@ jobs:
         with:
           name: ${{ env.ONEPLUS_ARTIFACT_NAME }}
           path: |
-            oneplus_workspace/*.zip
+            pixel10_workspace/*.zip
             LICENSE
             THIRD_PARTY_NOTICES.md
           if-no-files-found: error
@@ -1083,5 +1050,5 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: ${{ env.ONEPLUS_IMAGE_ARTIFACT_NAME }}
-          path: oneplus_workspace/Image
+          path: pixel10_workspace/Image
           if-no-files-found: warn

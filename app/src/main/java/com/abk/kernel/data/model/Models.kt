@@ -590,7 +590,7 @@ const val KSU_VARIANT_SUKISU = "SukiSU"
 const val KSU_VARIANT_RESUKISU = "ReSukiSU"
 const val BUILD_TARGET_GKI = "gki"
 const val BUILD_TARGET_CUSTOM_SOURCE = "custom_source"
-const val BUILD_TARGET_ONEPLUS = "oneplus"
+const val BUILD_TARGET_PIXEL10 = "pixel10"
 const val SOURCE_ACCESS_PUBLIC = "public"
 const val SOURCE_ACCESS_GITHUB_PRIVATE = "github_private"
 

@@ -1,4 +1,4 @@
-name: OnePlus 内核构建-自定义
+name: Pixel 10 Kernel Build - Custom
 
 permissions:
   contents: write
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       cpu:
-        description: "OnePlus/Oplus CPU 分支"
+        description: "Pixel 10 CPU Branch"
         required: true
         type: choice
         options:
@@ -28,47 +28,14 @@ on:
           - sm6375
         default: sm8650
       device_manifest:
-        description: "ABK 机型配置（值为上游 XML 名称，构建摘要会明确显示系统版本）"
+        description: "ABK Device Config（值为上游 XML 名称，构建摘要会明确显示系统版本）"
         required: true
         type: choice
         options:
-          - oneplus_15
-          - oneplus_15t
-          - oneplus_13_b
-          - oneplus_13s_b
-          - oneplus_13t_b
-          - oneplus_ace5_pro_b
-          - oneplus_ace_6
-          - oneplus_pad_2_pro_b
-          - oneplus_pad_3_b
-          - oneplus_ace5_ultra_b
-          - oneplus_turbo_6
-          - oneplus_12_b
-          - oneplus_ace3_pro_b
-          - oneplus_ace5_b
-          - oneplus_13r_b
-          - oneplus_pad2_b
-          - oneplus_pad_pro_b
-          - oneplus_ace5_race_b
-          - oneplus_nord_5_b
-          - oneplus_11_b
-          - oneplus_12r_b
-          - oneplus_ace2_pro_b
-          - oneplus_ace3_b
-          - oneplus_open_b
-          - oneplus_10t_v
-          - oneplus_11r_b
-          - oneplus_ace2_b
-          - oneplus_ace_pro_v
-          - oneplus_10_pro_b
-          - oneplus_ace_3v_b
-          - oneplus_turbo_6v
-          - oneplus_nord_4_b
-          - oneplus_nord_ce4_lite_5g
-          - oneplus_nord_ce4_b
-        default: oneplus_12_b
+          - muzel
+        default: muzel
       android_version:
-        description: "内核 Android KMI 版本"
+        description: "Kernel Android KMI Version"
         required: true
         type: choice
         options:
@@ -79,7 +46,7 @@ on:
           - android12
         default: android14
       kernel_version:
-        description: "内核版本"
+        description: "Kernel Version"
         required: true
         type: choice
         options:
@@ -90,7 +57,7 @@ on:
           - "5.10"
         default: "6.1"
       ksu_variant:
-        description: "KernelSU 变体"
+        description: "KernelSU Variant"
         required: true
         type: choice
         options:

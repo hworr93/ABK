@@ -253,7 +253,7 @@ jobs:
                       "--filter=blob:none",
                       "--no-checkout",
                       "--no-single-branch",
-                      "https://github.com/Xiaomichael/kernel_manifest.git",
+                      "https://github.com/Blackmanx/kernel_google_muzel.git",
                       str(repo_path),
                   ],
                   check=True,
